@@ -45,7 +45,7 @@ def api_get(path: str) -> Any:
         headers["X-Super-Contact"] = CONTACT
     req = urllib.request.Request(url, headers=headers, method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=20) as response:
+        with urllib.request.urlopen(req, timeout=60) as response:
             body = response.read()
             if response.status != 200:
                 raise RuntimeError(f"API returned HTTP {response.status} for {path}")
