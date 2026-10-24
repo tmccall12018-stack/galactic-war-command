@@ -204,8 +204,15 @@ def collect_once() -> None:
             health_remaining_pct = float(health) / float(max_health) * 100 if health is not None and max_health else None
         except (ValueError, TypeError, ZeroDivisionError):
             health_remaining_pct = None
-        sector_index = first(meta, "sector", "sectorIndex", "sectorID")
-        sector_name = sector_names.get(int(sector_index)) if sector_index is not None else None
+       raw_sector = first(meta, "sector", "sectorIndex", "sectorID")
+sector_index = None
+sector_name = None
+
+if isinstance(raw_sector, (int, float)):
+    sector_index = int(raw_sector)
+    sector_name = sector_names.get(sector_index)
+elif isinstance(raw_sector, str):
+    sector_name = raw_sector
         planet_name = first(meta, "name", "planetName", "planet_name")
         if sector_name and not first(meta, "sectorName"):
             meta["sectorName"] = sector_name
