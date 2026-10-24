@@ -40,28 +40,56 @@ def api_get(path: str) -> Any:
         "Accept": "application/json",
         "User-Agent": f"{CLIENT}/0.1 (community research collector)",
         "X-Super-Client": CLIENT,
+        "X-Super-Contact": CONTACT,
     }
-    if CONTACT:
-        headers["X-Super-Contact"] = CONTACT
-    req = urllib.request.Request(url, headers=headers, method="GET")
-    try:
-        with urllib.request.urlopen(req, timeout=60) as response:
-            body = response.read()
-            if response.status != 200:
-                raise RuntimeError(f"API returned HTTP {response.status} for {path}")
-            return json.loads(body.decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        if exc.code == 429:
-            wait = exc.headers.get("Retry-After", "unknown")
-            raise RuntimeError(f"Rate limited by API (Retry-After: {wait}); lower collection frequency") from exc
-        message = exc.read(500).decode("utf-8", "replace")
-        raise RuntimeError(f"HTTP {exc.code} requesting {path}: {message}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"Network error requesting {path}: {exc.reason}") from exc
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"API returned invalid JSON for {path}") from exc
 
+    for attempt in range(4):
+        req = urllib.request.Request(url, headers=headers, method="GET")
+        try:
+            with urllib.request.urlopen(req, timeout=60) as response:
+                return json.loads(response.read().decode("utf-8"))
 
+        except urllib.error.HTTPError as exc:
+            if exc.code in (429, 502, 503, 504):
+                if attempt == 3:
+                    raise RuntimeError(
+                        f"API remained unavailable after retries: "
+                        f"HTTP {exc.code} for {path}"
+                    ) from exc
+                retry_after = exc.headers.get("Retry-After")
+                try:
+                    delay = min(int(retry_after), 60) if retry_after else 10 * (attempt + 1)
+                except ValueError:
+                    delay = 10 * (attempt + 1)
+                print(
+                    f"Temporary HTTP {exc.code} for {path}; "
+                    f"retrying in {delay}s",
+                    file=sys.stderr,
+                )
+                time.sleep(delay)
+                continue
+
+            message = exc.read(500).decode("utf-8", "replace")
+            raise RuntimeError(
+                f"HTTP {exc.code} requesting {path}: {message}"
+            ) from exc
+
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if attempt == 3:
+                raise RuntimeError(
+                    f"Request failed after retries for {path}: {exc}"
+                ) from exc
+            delay = 10 * (attempt + 1)
+            print(
+                f"Request problem for {path}; retrying in {delay}s",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
+
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"API returned invalid JSON for {path}") from exc
+
+    raise RuntimeError(f"Request failed for {path}")
 def first(mapping: dict[str, Any], *keys: str) -> Any:
     # APIs may use camelCase or PascalCase; matching is case-insensitive.
     lowered = {str(k).lower(): v for k, v in mapping.items()}
