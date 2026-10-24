@@ -1,0 +1,53 @@
+name: Collect Galactic War snapshots
+
+on:
+  workflow_dispatch:
+  schedule:
+    # GitHub scheduled workflows run in UTC; 15-minute collection cadence.
+    - cron: '*/15 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: galactic-war-collector
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Restore collector database cache
+        uses: actions/cache@v4
+        with:
+          path: data/galactic_war.sqlite3
+          key: galactic-war-db-${{ github.run_id }}
+          restore-keys: |
+            galactic-war-db-
+
+      - name: Collect one snapshot
+        run: python collector.py --once
+        env:
+          HD2_API_CLIENT: GalacticWarPlanningCollector
+          HD2_DATA_DIR: data
+
+      - name: Commit updated CSV snapshots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/*.csv
+          if git diff --cached --quiet; then
+            echo "No CSV changes to commit."
+          else
+            git commit -m "data: update Galactic War snapshots"
+            git push
+          fi
