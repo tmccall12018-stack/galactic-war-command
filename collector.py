@@ -204,7 +204,7 @@ def collect_once() -> None:
             health_remaining_pct = float(health) / float(max_health) * 100 if health is not None and max_health else None
         except (ValueError, TypeError, ZeroDivisionError):
             health_remaining_pct = None
-                    raw_sector = first(meta, "sector", "sectorIndex", "sectorID")
+        raw_sector = first(meta, "sector", "sectorIndex", "sectorID")
         sector_index = None
         sector_name = None
         if isinstance(raw_sector, (int, float)):
