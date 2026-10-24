@@ -23,7 +23,10 @@ BASE_URL = os.getenv("HD2_API_BASE", "https://api.helldivers2.dev").rstrip("/")
 DATA_DIR = Path(os.getenv("HD2_DATA_DIR", Path(__file__).resolve().parent / "data"))
 DB_PATH = Path(os.getenv("HD2_DB_PATH", DATA_DIR / "galactic_war.sqlite3"))
 CLIENT = os.getenv("HD2_API_CLIENT", "GalacticWarPlanningCollector/0.1")
-CONTACT = os.getenv("HD2_API_CONTACT", "")
+CONTACT = os.getenv(
+    "HD2_API_CONTACT",
+    "https://github.com/tmccall12018-stack/galactic-war-command"
+)
 DEFAULT_INTERVAL = int(os.getenv("HD2_INTERVAL_SECONDS", "900"))
 
 
